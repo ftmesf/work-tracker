@@ -190,6 +190,13 @@ export async function pull() {
       if (error) throw Object.assign(new Error(error.message), { table })
       next[table] = data || []
     }
+    // اگر همین حین کشیدن داده، کاربر چیزی تایپ کرد (dirty شد)، آن را دور نریز —
+    // جایگزینی کامل db همین الان آن ورودی تازه را پاک می‌کرد
+    if (TABLES.some((t) => dirty[t].size)) {
+      sync.state = 'idle'
+      emit()
+      return false
+    }
     db = next
     sync.state = 'idle'
     sync.error = null
