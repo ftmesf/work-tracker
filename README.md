@@ -1,79 +1,93 @@
-# ردیاب کار
+# Work Tracker
 
-اپ شخصی ردیابی کار. تک‌کاربره، بدون لاگین، تقویم شمسی، فارسی. برای گوشی خودت است، نه برای گزارش به کسی.
+A personal, offline-first work-tracking PWA — built for tracking highly parallel work (company / personal / learning) without the overhead of a "real" project management tool. Persian-first UI (RTL, Vazirmatn, Jalali calendar), single-user, no login.
+
+**Live demo:** _add your Vercel URL here after deploying_
 
 ---
 
-## راه‌اندازی روی کامپیوتر (یک‌بار)
+## Why this exists
 
-نیاز داری: [Node.js](https://nodejs.org) نصب باشد (نسخه‌ی ۱۸ به بالا).
+Built for a workflow with ~10 concurrent threads and ~12 context switches a day, where nothing gets written down in the moment. The app answers two questions at a glance: *what did I actually do*, and *how much time went where* — split across three buckets (company work, personal projects, learning) with daily time breakdowns per task.
+
+## Features
+
+- **Three-bucket system** — every task belongs to company / personal / learning, visualized everywhere (split charts, colored group headers, filters)
+- **Daily time breakdown** — a task can span multiple days; each work session is its own log entry (`time_logs`), not a duplicate task
+- **Jalali (Persian) calendar** — a from-scratch Gregorian ↔ Jalali converter (no external calendar library), validated against 5,000+ consecutive days and cross-checked against `Intl.DateTimeFormat('en-u-ca-persian')`
+- **Offline-first sync** — writes land in `localStorage` instantly; a background queue pushes to Supabase when online. No conflict resolution needed (single user, single device) — just "don't lose what I typed"
+- **No hard deletes** — everything is soft-archived (`archived_at`); cancelled/archived work still counts in historical stats
+- **Attendance tracking** — office days, arrival/departure times, weekly/monthly totals
+- **In-app reminders** — open commitments, pinned notes, "haven't logged anything today" — instead of push notifications
+- **Markdown & CSV/JSON export** — one-click text summary of any date range; full data export for backup
+- **Installable PWA** — add to iOS home screen, works fully offline after first load
+
+## Tech stack
+
+- **React 18 + Vite** — no framework, no router (single-page dashboard)
+- **Supabase (Postgres)** — optional cloud backup; app is fully functional without it
+- **`vite-plugin-pwa`** — service worker, manifest, offline caching
+- **Zero calendar/date dependencies** — the Jalali conversion, week/month range logic, and formatting all live in [`src/lib/jalali.js`](src/lib/jalali.js)
+- **No CSS framework** — hand-written design tokens (spacing/color/radius scale) in [`src/styles.css`](src/styles.css)
+
+## Project structure
+
+```
+src/
+  lib/
+    jalali.js      Gregorian ↔ Jalali conversion, date math, formatting
+    report.js       All derived stats (bucket splits, cold categories, trends, markdown export)
+    store.js        Local-first data layer: localStorage + Supabase sync queue
+    backup.js        JSON/CSV export
+    constants.js     Buckets, statuses, colors
+  sections/          One component per dashboard card
+  icons.jsx          Hand-drawn SVG icon set (no icon library dependency)
+supabase/
+  schema.sql         Full Postgres schema + RLS policies
+tests/
+  run.mjs            Dependency-free test suite (22 tests: calendar math, report logic, CSV escaping)
+```
+
+## Running locally
+
+Requires [Node.js](https://nodejs.org) 18+.
 
 ```bash
-cd work-tracker
 npm install
 npm run dev
 ```
 
-بعد آدرسی که در ترمینال می‌آید (چیزی شبیه `http://localhost:5173`) را در مرورگر باز کن.
+Runs entirely offline with local storage — Supabase is optional (see below).
 
-اگر همین‌جا بمانی و اینترنت هم نداشته باشی، اپ کامل کار می‌کند — همه‌چیز در حافظه‌ی همین مرورگر ذخیره می‌شود. Supabase و اینترنت فقط برای این‌اند که یک نسخه‌ی پشتیبان هم روی سرور داشته باشی؛ اختیاری‌اند.
+Run the test suite:
 
----
-
-## اضافه کردن به صفحه‌ی اصلی آیفون
-
-۱. اپ را در **سافاری** (نه کروم) باز کن — آدرس همان است که بالا نصب کردی، یا آدرس نسخه‌ی روی Vercel اگر منتشرش کردی.
-۲. دکمه‌ی **اشتراک‌گذاری** را بزن (مربع با فلش رو به بالا، پایین صفحه).
-۳. **«Add to Home Screen»** یا **«افزودن به صفحه‌ی اصلی»** را بزن.
-۴. تأیید کن.
-
-از این به بعد، آیکون اپ روی صفحه‌ی اصلی است — مثل یک اپ واقعی باز می‌شود، بدون نوار آدرس مرورگر.
-
----
-
-## بکاپ گرفتن
-
-این مهم‌ترین بخش این فایل است. داده‌ی تو فقط در مرورگر همین گوشی/کامپیوتر است (مگر Supabase را وصل کرده باشی). اگر مرورگر را پاک کنی یا گوشی عوض کنی، بدون بکاپ همه‌چیز از دست می‌رود.
-
-**هر چند وقت یک‌بار** (پیشنهاد: هفته‌ای یک بار):
-
-۱. داخل اپ برو پایین تا کارت **«بکاپ و بازیابی»**.
-۲. دکمه‌ی **«دانلود بکاپ کامل (JSON)»** را بزن.
-۳. فایلی که دانلود می‌شود را یک جای امن نگه دار — مثلاً بفرستش به ایمیل خودت، یا در گوگل‌درایو/آیکلاود بگذار.
-
-اگر یک روز خواستی از آن فایل برگردی: همان کارت، پایین‌تر، «بازیابی از فایل JSON» — فایل را انتخاب کن. **توجه:** این کار همه‌ی داده‌ی فعلی اپ را با محتوای فایل جایگزین می‌کند، پس مطمئن شو فایل درستی انتخاب کرده‌ای.
-
-خروجی CSV هر جدول هم همان‌جاست، برای وقتی خواستی داده را در اکسل/گوگل‌شیت باز کنی.
-
----
-
-## وصل کردن به Supabase (اختیاری)
-
-اگر می‌خواهی یک نسخه‌ی پشتیبان آنلاین هم داشته باشی (پیشنهاد می‌شود، ولی اجباری نیست):
-
-۱. یک پروژه‌ی رایگان در [supabase.com](https://supabase.com) بساز.
-۲. برو به **SQL Editor** پروژه، فایل [`supabase/schema.sql`](supabase/schema.sql) را کامل کپی کن و اجرا بزن.
-۳. برو به **Project Settings → API**. دو چیز را بردار:
-   - **Project URL**
-   - **anon public key**
-۴. داخل اپ، کارت **«اتصال به Supabase»** (پایین صفحه) — این دو مقدار را بچسبان و ذخیره کن.
-
-از این لحظه، هر چیزی که تایپ می‌کنی هم در همین مرورگر می‌ماند هم (وقتی اینترنت هست) به Supabase می‌رود. اگر آفلاین بودی، در صف می‌ماند تا اینترنت برگردد — چیزی گم نمی‌شود.
-
-### روی Vercel (اختیاری)
-اگر اپ را روی Vercel منتشر کردی، می‌توانی به‌جای وارد کردن دستی در اپ، این دو متغیر محیطی را در تنظیمات پروژه‌ی Vercel بگذاری:
+```bash
+npm test
 ```
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
-در این حالت کارت «اتصال به Supabase» فقط وضعیت را نشان می‌دهد و قابل ویرایش نیست (چون از تنظیمات سرور خوانده می‌شود).
 
-**نکته‌ی امنیتی:** چون این اپ لاگین ندارد، هر کسی که آدرس اپ منتشرشده را داشته باشد می‌تواند داده را ببیند. آدرس را جایی عمومی نگذار.
+## Optional: Supabase backup
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
+3. Copy the **Project URL** and **anon public key** from Project Settings → API.
+4. Either paste them into the app's "Connect to Supabase" card, or set them as environment variables:
+   ```
+   VITE_SUPABASE_URL=...
+   VITE_SUPABASE_ANON_KEY=...
+   ```
+
+Note: since this app has no auth, anyone with the deployed URL and anon key can read/write the data. Fine for a private personal tool; don't publish the live URL.
+
+## Deploying
+
+Standard Vite static build — deploys to Vercel/Netlify/any static host with zero config:
+
+```bash
+npm run build
+```
+
+Set the two `VITE_SUPABASE_*` environment variables in your host's project settings if you want cloud sync in production.
 
 ---
 
-## اگر چیزی درست کار نکرد
-
-- **رفرش صفحه** اول قدم است — چیزی گم نمی‌شود، همه در حافظه‌ی مرورگر است.
-- اگر پیام «حافظه‌ی مرورگر پر است» دیدی: یک بکاپ JSON بگیر، بعد چند رکورد قدیمی را بایگانی کن.
-- برای دیدن خطاهای فنی: در مرورگر روی صفحه راست‌کلیک → Inspect → تب Console.
+Built with [Claude Code](https://claude.com/claude-code).
