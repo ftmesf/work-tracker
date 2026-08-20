@@ -2,7 +2,7 @@
 
 A personal, offline-first work-tracking PWA — built for tracking highly parallel work (company / personal / learning) without the overhead of a "real" project management tool. Persian-first UI (RTL, Vazirmatn, Jalali calendar), single-user, no login.
 
-**Live demo:** _add your Vercel URL here after deploying_
+**Live demo:** [work-tracker-fatemehesf-projects.vercel.app](https://work-tracker-fatemehesf-projects.vercel.app)
 
 ---
 
