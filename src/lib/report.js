@@ -57,26 +57,34 @@ export function buildReport(db, range) {
     }
   })
 
-  const byCategory = [...catById.values()]
-    .map((c) => {
-      const rs = rows.filter((r) => r.category_id === c.id)
-      return { id: c.id, name: c.name, bucket: c.bucket, minutes: sum(rs), taskCount: rs.length }
+  // یک پاس روی rows به‌جای filter جدا به ازای هر دسته/پروژه — O(rows) به‌جای O(دسته×rows)
+  const catAgg = new Map()
+  const projAgg = new Map()
+  for (const r of rows) {
+    if (r.category_id) {
+      const a = catAgg.get(r.category_id) || { minutes: 0, taskCount: 0 }
+      a.minutes += r.minutes
+      a.taskCount += 1
+      catAgg.set(r.category_id, a)
+    }
+    const pid = r.project_id || null
+    const p = projAgg.get(pid) || { minutes: 0, taskCount: 0 }
+    p.minutes += r.minutes
+    p.taskCount += 1
+    projAgg.set(pid, p)
+  }
+
+  const byCategory = [...catAgg.entries()]
+    .map(([id, a]) => {
+      const c = catById.get(id)
+      return { id, name: c ? c.name : 'بدون دسته', bucket: c ? c.bucket : null, ...a }
     })
-    .filter((c) => c.taskCount > 0)
     .sort((a, b) => b.minutes - a.minutes)
 
-  const projectKeys = [...new Set(rows.map((r) => r.project_id || null))]
-  const byProject = projectKeys
-    .map((pid) => {
-      const rs = rows.filter((r) => (r.project_id || null) === pid)
+  const byProject = [...projAgg.entries()]
+    .map(([pid, a]) => {
       const p = pid ? projById.get(pid) : null
-      return {
-        id: pid,
-        name: p ? p.name : 'بدون پروژه',
-        bucket: p ? p.bucket : null,
-        minutes: sum(rs),
-        taskCount: rs.length,
-      }
+      return { id: pid, name: p ? p.name : 'بدون پروژه', bucket: p ? p.bucket : null, ...a }
     })
     .sort((a, b) => b.minutes - a.minutes)
 
@@ -198,24 +206,41 @@ export function trend(db, months) {
   })
 }
 
-/** آیا امروز اصلاً چیزی ثبت شده؟ */
-export function hasActivityOn(db, day) {
+/** مجموعه‌ی روزهایی که فعالیت دارند — یک پاس، برای استفاده‌ی تکراری (استریک) */
+function activityDaySet(db) {
   const tasks = liveTasks(db)
-  if (tasks.some((t) => t.created_on === day)) return true
-  const ids = new Set(tasks.map((t) => t.id))
-  return (db.time_logs || []).some((l) => l.occurred_on === day && ids.has(l.task_id))
+  const days = new Set()
+  const ids = new Set()
+  for (const t of tasks) {
+    ids.add(t.id)
+    if (t.created_on) days.add(t.created_on)
+  }
+  for (const l of db.time_logs || []) {
+    if (ids.has(l.task_id)) days.add(l.occurred_on)
+  }
+  return days
 }
 
-/** چند روز پیاپی (تا امروز یا تا دیروز) چیزی ثبت شده */
+/** آیا امروز اصلاً چیزی ثبت شده؟ */
+export function hasActivityOn(db, day) {
+  return activityDaySet(db).has(day)
+}
+
+/**
+ * چند روز پیاپی (تا امروز یا تا دیروز) چیزی ثبت شده. قبلاً به ازای هر روزِ
+ * استریک دوباره کل tasks/time_logs اسکن می‌شد (O(روز × رکورد)) — حالا مجموعه‌ی
+ * روزها یک‌بار ساخته می‌شود و هر چک فقط یک Set.has است.
+ */
 export function streakInfo(db, today) {
-  const includesToday = hasActivityOn(db, today)
+  const days = activityDaySet(db)
+  const includesToday = days.has(today)
   let day = includesToday ? today : addDays(today, -1)
-  let days = 0
-  while (hasActivityOn(db, day)) {
-    days += 1
+  let count = 0
+  while (days.has(day)) {
+    count += 1
     day = addDays(day, -1)
   }
-  return { days, includesToday }
+  return { days: count, includesToday }
 }
 
 /** مقایسه‌ی زمان هر دسته با بازه‌ی هم‌طولِ درست قبل از این بازه */

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { fa, formatDate } from '../lib/jalali.js'
 import { hasActivityOn, openCommitments, streakInfo } from '../lib/report.js'
 import { bucketOf } from '../lib/constants.js'
@@ -17,8 +17,8 @@ export default function Reminders({ db, today }) {
     .filter((m) => !m.cancelled_at && m.day === today)
     .slice()
     .sort((a, b) => (a.time_at || '').localeCompare(b.time_at || ''))
-  const streak = streakInfo(db, today)
-  const nothingToday = !hasActivityOn(db, today)
+  const streak = useMemo(() => streakInfo(db, today), [db.tasks, db.time_logs, today])
+  const nothingToday = useMemo(() => !hasActivityOn(db, today), [db.tasks, db.time_logs, today])
   const shown = showAll ? commitments : commitments.slice(0, 5)
   const quiet = !nothingToday && !commitments.length && !pins.length
 

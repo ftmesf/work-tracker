@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fa, minutesToHM, rangeLabel } from '../lib/jalali.js'
 import { buildReport, categoryComparison, coldCategories } from '../lib/report.js'
 import { insert, update } from '../lib/store.js'
@@ -18,10 +18,10 @@ export default function WeeklyReview({ db, range, today }) {
     setNext(existing?.next || '')
   }, [range.from, range.to])
 
-  const r = buildReport(db, range)
-  const cmp = categoryComparison(db, range)
+  const r = useMemo(() => buildReport(db, range), [db.tasks, db.time_logs, db.categories, db.projects, range.from, range.to])
+  const cmp = useMemo(() => categoryComparison(db, range), [db.tasks, db.time_logs, db.categories, range.from, range.to])
   const mover = cmp.rows.find((x) => x.prevMinutes > 0 && x.curMinutes > 0)
-  const cold = coldCategories(db, range, today)
+  const cold = useMemo(() => coldCategories(db, range, today), [db.categories, db.tasks, db.time_logs, range.from, range.to, today])
   const openBlockers = (db.blockers || []).filter((b) => !b.resolved_on)
   const topCats = r.byCategory.slice(0, 3)
 

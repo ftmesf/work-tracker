@@ -21,6 +21,7 @@ const LS_SEEDED = 'wt.seeded.v1'
 // ترتیب مهم است: کلید خارجی. دسته و پروژه قبل از کار، کار قبل از زمان.
 const PUSH_ORDER = ['categories', 'projects', 'tasks', 'time_logs', 'attendance', 'pinned_notes', 'blockers', 'meetings', 'task_templates', 'reviews']
 const CONFLICT_KEY = { attendance: 'day', reviews: 'range_from,range_to' }
+const PULL_PAGE_SIZE = 1000
 
 export function uid() {
   if (globalThis.crypto?.randomUUID) return crypto.randomUUID()
@@ -192,9 +193,19 @@ export async function pull() {
   try {
     const next = emptyDB()
     for (const table of TABLES) {
-      const { data, error } = await supabase.from(table).select('*')
-      if (error) throw Object.assign(new Error(error.message), { table })
-      next[table] = data || []
+      // PostgREST پیش‌فرض هر select را به ۱۰۰۰ ردیف می‌بُرد — بدون صفحه‌بندی،
+      // جدولی مثل time_logs که با گذر زمان بزرگ می‌شود بی‌صدا ناقص pull می‌شد
+      // و چون db محلی کامل با همین نتیجه جایگزین می‌شود، تاریخچه گم می‌رفت
+      let rows = []
+      let offset = 0
+      for (;;) {
+        const { data, error } = await supabase.from(table).select('*').range(offset, offset + PULL_PAGE_SIZE - 1)
+        if (error) throw Object.assign(new Error(error.message), { table })
+        rows = rows.concat(data || [])
+        if (!data || data.length < PULL_PAGE_SIZE) break
+        offset += PULL_PAGE_SIZE
+      }
+      next[table] = rows
     }
     // اگر همین حین کشیدن داده، کاربر چیزی تایپ کرد (dirty شد)، آن را دور نریز —
     // جایگزینی کامل db همین الان آن ورودی تازه را پاک می‌کرد
@@ -257,6 +268,25 @@ export function update(table, id, patch) {
   return updated
 }
 
+/**
+ * مثل update ولی برای چند ردیف با هم — یک ذخیره‌ی محلی و یک رندر برای کل دسته،
+ * نه یکی به‌ازای هر ردیف. برای عملیات‌هایی مثل merge که ده‌ها ردیف را با هم
+ * پچ می‌کنند لازم است — وگرنه هر ردیف یک JSON.stringify کامل db و یک رندر جدا
+ * می‌گرفت.
+ */
+export function updateMany(table, ids, patchFn) {
+  const idSet = new Set(ids)
+  if (!idSet.size) return
+  db[table] = db[table].map((r) => {
+    if (!idSet.has(r.id)) return r
+    markDirty(table, r.id)
+    return { ...r, ...patchFn(r) }
+  })
+  saveLocal()
+  emit()
+  scheduleFlush()
+}
+
 /** حضور بر اساس روز یکتاست — اگر بود به‌روزرسانی، اگر نبود ساخته می‌شود */
 export function setAttendance(day, patch) {
   const existing = db.attendance.find((a) => a.day === day)
@@ -281,26 +311,22 @@ export function unarchiveTask(id) {
 export function mergeCategories(keepId, dupIds) {
   const dups = new Set(dupIds.filter((id) => id !== keepId))
   if (!dups.size) return
-  for (const t of db.tasks) {
-    if (dups.has(t.category_id)) update('tasks', t.id, { category_id: keepId })
-  }
-  for (const t of db.task_templates) {
-    if (dups.has(t.category_id)) update('task_templates', t.id, { category_id: keepId })
-  }
-  for (const id of dups) update('categories', id, { is_active: false })
+  const taskIds = db.tasks.filter((t) => dups.has(t.category_id)).map((t) => t.id)
+  updateMany('tasks', taskIds, () => ({ category_id: keepId }))
+  const templateIds = db.task_templates.filter((t) => dups.has(t.category_id)).map((t) => t.id)
+  updateMany('task_templates', templateIds, () => ({ category_id: keepId }))
+  updateMany('categories', [...dups], () => ({ is_active: false }))
 }
 
 /** مثل mergeCategories ولی برای پروژه‌ها — چون پروژه is_active ندارد، دوپلیکیت‌ها status: 'done' می‌گیرند */
 export function mergeProjects(keepId, dupIds) {
   const dups = new Set(dupIds.filter((id) => id !== keepId))
   if (!dups.size) return
-  for (const t of db.tasks) {
-    if (dups.has(t.project_id)) update('tasks', t.id, { project_id: keepId })
-  }
-  for (const t of db.task_templates) {
-    if (dups.has(t.project_id)) update('task_templates', t.id, { project_id: keepId })
-  }
-  for (const id of dups) update('projects', id, { status: 'done' })
+  const taskIds = db.tasks.filter((t) => dups.has(t.project_id)).map((t) => t.id)
+  updateMany('tasks', taskIds, () => ({ project_id: keepId }))
+  const templateIds = db.task_templates.filter((t) => dups.has(t.project_id)).map((t) => t.id)
+  updateMany('task_templates', templateIds, () => ({ project_id: keepId }))
+  updateMany('projects', [...dups], () => ({ status: 'done' }))
 }
 
 // --------------------------------------------------------------- عملیات‌ها

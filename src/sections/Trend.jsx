@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { BUCKETS } from '../lib/constants.js'
 import { JALALI_MONTHS, fa, isoToJalali, jalaliMonthRange, minutesToHM, shiftMonth } from '../lib/jalali.js'
 import { trend } from '../lib/report.js'
@@ -9,12 +10,15 @@ export default function Trend({ db, today }) {
   const [by, setBy] = usePersisted('wt.trendBy', 'minutes')
 
   const now = isoToJalali(today)
-  const months = []
-  for (let i = count - 1; i >= 0; i--) {
-    const m = shiftMonth(now.jy, now.jm, -i)
-    months.push({ ...m, label: `${JALALI_MONTHS[m.jm - 1]} ${fa(m.jy)}`, ...jalaliMonthRange(m.jy, m.jm) })
-  }
-  const data = trend(db, months)
+  const months = useMemo(() => {
+    const arr = []
+    for (let i = count - 1; i >= 0; i--) {
+      const m = shiftMonth(now.jy, now.jm, -i)
+      arr.push({ ...m, label: `${JALALI_MONTHS[m.jm - 1]} ${fa(m.jy)}`, ...jalaliMonthRange(m.jy, m.jm) })
+    }
+    return arr
+  }, [now.jy, now.jm, count])
+  const data = useMemo(() => trend(db, months), [db.tasks, db.time_logs, months])
   const total = (row) => (by === 'minutes' ? row.totalMinutes : row.totalTasks)
   const bVal = (b) => (by === 'minutes' ? b.minutes : b.taskCount)
 
