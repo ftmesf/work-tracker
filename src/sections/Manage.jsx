@@ -11,6 +11,7 @@ export default function Manage({ db }) {
   const [newName, setNewName] = useState('')
   const [newTmplTitle, setNewTmplTitle] = useState('')
   const [newTmplCat, setNewTmplCat] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
 
   const cats = (db.categories || [])
     .filter((c) => c.bucket === bucket)
@@ -18,6 +19,10 @@ export default function Manage({ db }) {
   const projs = (db.projects || []).filter((p) => p.bucket === bucket)
   const templates = (db.task_templates || []).filter((t) => t.bucket === bucket)
   const catById = new Map((db.categories || []).map((c) => [c.id, c]))
+
+  const activeCats = cats.filter((c) => c.is_active !== false)
+  const visibleCats = showInactive ? cats : activeCats
+  const visibleTemplates = showInactive ? templates : templates.filter((t) => t.is_active !== false)
 
   const usageCount = (catId) => (db.tasks || []).filter((t) => t.category_id === catId).length
   const projUsage = (pid) => (db.tasks || []).filter((t) => t.project_id === pid).length
@@ -75,8 +80,8 @@ export default function Manage({ db }) {
   }
 
   useEffect(() => {
-    setNewTmplCat((c) => (cats.some((x) => x.id === c) ? c : cats[0]?.id || ''))
-  }, [bucket, cats])
+    setNewTmplCat((c) => (activeCats.some((x) => x.id === c) ? c : activeCats[0]?.id || ''))
+  }, [bucket, activeCats])
 
   // کل لیست را دوباره شماره‌گذاری می‌کند (نه فقط دو تای جابه‌جاشده) تا اگر
   // sort قبلاً به‌خاطر اضافه/غیرفعال‌شدن ردیف‌ها پیاپی نبود، خودش را درست کند
@@ -124,6 +129,14 @@ export default function Manage({ db }) {
             {b.short}
           </button>
         ))}
+        {tab !== 'projects' && (
+          <button
+            className={'chip' + (showInactive ? ' on neutral' : '')}
+            onClick={() => setShowInactive((v) => !v)}
+          >
+            {showInactive ? 'مخفی کردن غیرفعال‌ها' : 'نمایش غیرفعال‌ها'}
+          </button>
+        )}
       </div>
 
       {tab === 'categories' && dupGroups.length > 0 && (
@@ -136,10 +149,12 @@ export default function Manage({ db }) {
       )}
 
       {tab === 'categories' ? (
-        cats.length === 0 ? (
-          <div className="empty">دسته‌ای در این سطل نیست.</div>
+        visibleCats.length === 0 ? (
+          <div className="empty">
+            {showInactive ? 'دسته‌ای در این سطل نیست.' : 'دسته‌ی فعالی در این سطل نیست.'}
+          </div>
         ) : (
-          cats.map((c, i) => (
+          visibleCats.map((c, i) => (
             <div className={'manage-row' + (c.is_active === false ? ' off' : '')} key={c.id}>
               <input
                 className="grow"
@@ -154,8 +169,8 @@ export default function Manage({ db }) {
               <span className="small faint nums" style={{ width: 42, textAlign: 'center' }}>
                 {fa(usageCount(c.id))}
               </span>
-              <button className="btn sm ghost" aria-label="بالاتر" onClick={() => move(cats, i, -1)} disabled={i === 0}><ArrowUp /></button>
-              <button className="btn sm ghost" aria-label="پایین‌تر" onClick={() => move(cats, i, 1)} disabled={i === cats.length - 1}><ArrowDown /></button>
+              <button className="btn sm ghost" aria-label="بالاتر" onClick={() => move(visibleCats, i, -1)} disabled={i === 0}><ArrowUp /></button>
+              <button className="btn sm ghost" aria-label="پایین‌تر" onClick={() => move(visibleCats, i, 1)} disabled={i === visibleCats.length - 1}><ArrowDown /></button>
               <button
                 className="btn sm"
                 onClick={() => update('categories', c.id, { is_active: c.is_active === false })}
@@ -202,10 +217,12 @@ export default function Manage({ db }) {
             </div>
           ))
         )
-      ) : templates.length === 0 ? (
-        <div className="empty">الگویی در این سطل نیست.</div>
+      ) : visibleTemplates.length === 0 ? (
+        <div className="empty">
+          {showInactive ? 'الگویی در این سطل نیست.' : 'الگوی فعالی در این سطل نیست.'}
+        </div>
       ) : (
-        templates.map((t) => (
+        visibleTemplates.map((t) => (
           <div className={'manage-row' + (t.is_active === false ? ' off' : '')} key={t.id}>
             <input
               className="grow"
@@ -245,8 +262,8 @@ export default function Manage({ db }) {
             onChange={(e) => setNewTmplCat(e.target.value)}
             style={{ width: 140, minHeight: 46 }}
           >
-            {cats.length === 0 && <option value="">دسته‌ای نیست</option>}
-            {cats.map((c) => (
+            {activeCats.length === 0 && <option value="">دسته‌ای نیست</option>}
+            {activeCats.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
