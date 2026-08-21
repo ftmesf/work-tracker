@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BUCKETS, PROJECT_STATUSES } from '../lib/constants.js'
 import { fa } from '../lib/jalali.js'
-import { insert, update } from '../lib/store.js'
+import { insert, mergeCategories, update } from '../lib/store.js'
 import { ArrowDown, ArrowUp } from '../icons.jsx'
 import { Fold, toast } from '../ui.jsx'
 
@@ -21,6 +21,31 @@ export default function Manage({ db }) {
 
   const usageCount = (catId) => (db.tasks || []).filter((t) => t.category_id === catId).length
   const projUsage = (pid) => (db.tasks || []).filter((t) => t.project_id === pid).length
+
+  // دسته‌های هم‌نامِ فعال در همین سطل — معمولاً مانده‌ی seed دوباره روی یک
+  // دستگاه/مرورگر دیگر قبل از اولین sync؛ فقط فعال‌ها را می‌بینیم چون بعد از
+  // ادغام، نسخه‌ی اضافی غیرفعال می‌شود و دیگر نباید دوباره پیشنهاد شود
+  const dupGroups = Object.values(
+    cats
+      .filter((c) => c.is_active !== false)
+      .reduce((acc, c) => {
+        const key = c.name.trim().toLowerCase()
+        ;(acc[key] ||= []).push(c)
+        return acc
+      }, {})
+  ).filter((g) => g.length > 1)
+
+  const mergeDuplicates = () => {
+    let merged = 0
+    for (const group of dupGroups) {
+      const [keep, ...rest] = [...group].sort(
+        (a, b) => usageCount(b.id) - usageCount(a.id) || (a.sort ?? 0) - (b.sort ?? 0)
+      )
+      mergeCategories(keep.id, rest.map((c) => c.id))
+      merged += rest.length
+    }
+    toast(`${fa(merged)} دسته‌ی تکراری با نسخه‌ی اصلی ادغام شد`)
+  }
 
   const add = () => {
     const name = newName.trim()
@@ -100,6 +125,15 @@ export default function Manage({ db }) {
           </button>
         ))}
       </div>
+
+      {tab === 'categories' && dupGroups.length > 0 && (
+        <div className="remind" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <span className="small">
+            {fa(dupGroups.length)} دسته‌ی هم‌نام در این سطل پیدا شد — احتمالاً از یک sync قبلی مانده.
+          </span>
+          <button className="btn sm primary" onClick={mergeDuplicates}>ادغام تکراری‌ها</button>
+        </div>
+      )}
 
       {tab === 'categories' ? (
         cats.length === 0 ? (

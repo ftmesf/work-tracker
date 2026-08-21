@@ -272,6 +272,23 @@ export function unarchiveTask(id) {
   return update('tasks', id, { archived_at: null })
 }
 
+/**
+ * چند دسته‌ی هم‌نام را در یکی ادغام می‌کند — کارها و الگوهای متصل به بقیه را
+ * به بازمانده وصل می‌کند، بعد بقیه را غیرفعال می‌کند. حذفِ واقعی نمی‌کنیم چون
+ * نه اپ و نه دیتابیس (RLS) اصلاً DELETE را قبول نمی‌کنند.
+ */
+export function mergeCategories(keepId, dupIds) {
+  const dups = new Set(dupIds.filter((id) => id !== keepId))
+  if (!dups.size) return
+  for (const t of db.tasks) {
+    if (dups.has(t.category_id)) update('tasks', t.id, { category_id: keepId })
+  }
+  for (const t of db.task_templates) {
+    if (dups.has(t.category_id)) update('task_templates', t.id, { category_id: keepId })
+  }
+  for (const id of dups) update('categories', id, { is_active: false })
+}
+
 // --------------------------------------------------------------- عملیات‌ها
 export function addTask({ title, bucket, category_id, project_id, minutes, done, date, note }) {
   const day = date || todayISO()
