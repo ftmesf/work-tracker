@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BUCKETS } from '../lib/constants.js'
 import { formatDate, minutesToHM, todayISO } from '../lib/jalali.js'
 import { similarOpenTasks } from '../lib/report.js'
-import { addTask, addTimeLog } from '../lib/store.js'
+import { addTask, addTimeLog, insert } from '../lib/store.js'
 import { Card, DateField, toast } from '../ui.jsx'
 import { usePersisted } from '../useStore.js'
 
@@ -27,6 +27,10 @@ export default function QuickAdd({ db, today }) {
   const projects = useMemo(
     () => (db.projects || []).filter((p) => p.bucket === bucket && p.status !== 'done'),
     [db.projects, bucket]
+  )
+  const templates = useMemo(
+    () => (db.task_templates || []).filter((t) => t.bucket === bucket && t.is_active !== false),
+    [db.task_templates, bucket]
   )
 
   // با عوض‌شدن سطل، دسته‌ی همان سطل برمی‌گردد (آخرین چیزی که انتخاب کرده بود)
@@ -76,6 +80,25 @@ export default function QuickAdd({ db, today }) {
     reset()
   }
 
+  const useTemplate = (t) => {
+    setTitle(t.title)
+    setCategoryId(cats.some((c) => c.id === t.category_id) ? t.category_id : cats[0]?.id || '')
+    setProjectId(projects.some((p) => p.id === t.project_id) ? t.project_id : '')
+    titleRef.current?.focus()
+  }
+
+  const saveAsTemplate = () => {
+    insert('task_templates', {
+      title: title.trim(),
+      bucket,
+      category_id: categoryId,
+      project_id: projectId || null,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    })
+    toast('الگو ذخیره شد')
+  }
+
   const canSubmit = title.trim().length > 0 && !!categoryId
 
   return (
@@ -92,6 +115,16 @@ export default function QuickAdd({ db, today }) {
         ))}
       </div>
 
+      {templates.length > 0 && (
+        <div className="chips" style={{ marginBottom: 8 }}>
+          {templates.map((t) => (
+            <button key={t.id} type="button" className="chip" onClick={() => useTemplate(t)}>
+              {t.title}
+            </button>
+          ))}
+        </div>
+      )}
+
       <input
         ref={titleRef}
         type="text"
@@ -102,6 +135,17 @@ export default function QuickAdd({ db, today }) {
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit() } }}
         style={{ marginBottom: 8 }}
       />
+
+      {title.trim() && categoryId && (
+        <button
+          type="button"
+          className="btn sm ghost"
+          style={{ marginBottom: 8 }}
+          onClick={saveAsTemplate}
+        >
+          ذخیره به‌عنوان الگو
+        </button>
+      )}
 
       {similar.length > 0 && (
         <div className="suggest">

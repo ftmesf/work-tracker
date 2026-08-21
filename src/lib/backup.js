@@ -8,6 +8,8 @@ export const TABLES = [
   'pinned_notes',
   'blockers',
   'meetings',
+  'task_templates',
+  'reviews',
 ]
 
 export const TABLE_LABELS = {
@@ -19,6 +21,8 @@ export const TABLE_LABELS = {
   pinned_notes: 'یادداشت‌های پین‌شده',
   blockers: 'موانع',
   meetings: 'جلسه‌ها',
+  task_templates: 'الگوهای کار',
+  reviews: 'مرورها',
 }
 
 export function toCSV(rows) {

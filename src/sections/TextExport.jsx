@@ -35,7 +35,7 @@ export default function TextExport({ db, range }) {
   }
 
   return (
-    <Fold n={14} id="export" title="خروجی متنی">
+    <Fold n={15} id="export" title="خروجی متنی">
       <div className="small muted" style={{ marginBottom: 8 }}>
         {rangeLabel(range.from, range.to)} — گروه‌بندی بر اساس سطل و دسته، با جمع زمان هر بخش.
       </div>

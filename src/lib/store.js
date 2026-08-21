@@ -18,8 +18,8 @@ const LS_DIRTY = 'wt.dirty.v1'
 const LS_CFG = 'wt.supabase.v1'
 
 // ترتیب مهم است: کلید خارجی. دسته و پروژه قبل از کار، کار قبل از زمان.
-const PUSH_ORDER = ['categories', 'projects', 'tasks', 'time_logs', 'attendance', 'pinned_notes', 'blockers', 'meetings']
-const CONFLICT_KEY = { attendance: 'day' }
+const PUSH_ORDER = ['categories', 'projects', 'tasks', 'time_logs', 'attendance', 'pinned_notes', 'blockers', 'meetings', 'task_templates', 'reviews']
+const CONFLICT_KEY = { attendance: 'day', reviews: 'range_from,range_to' }
 
 export function uid() {
   if (globalThis.crypto?.randomUUID) return crypto.randomUUID()

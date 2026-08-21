@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { fa, formatDate } from '../lib/jalali.js'
-import { hasActivityOn, openCommitments } from '../lib/report.js'
+import { hasActivityOn, openCommitments, streakInfo } from '../lib/report.js'
 import { bucketOf } from '../lib/constants.js'
 import { insert, setTaskStatus, update } from '../lib/store.js'
 import { Clock, Pin as PinIcon, Plus } from '../icons.jsx'
@@ -17,6 +17,7 @@ export default function Reminders({ db, today }) {
     .filter((m) => !m.cancelled_at && m.day === today)
     .slice()
     .sort((a, b) => (a.time_at || '').localeCompare(b.time_at || ''))
+  const streak = streakInfo(db, today)
   const nothingToday = !hasActivityOn(db, today)
   const shown = showAll ? commitments : commitments.slice(0, 5)
   const quiet = !nothingToday && !commitments.length && !pins.length
@@ -32,7 +33,14 @@ export default function Reminders({ db, today }) {
 
   return (
     <section className={'remind' + (quiet ? ' remind-empty' : '')}>
-      <h2>یادآور</h2>
+      <div className="remind-head">
+        <h2>یادآور</h2>
+        {streak.days > 0 && (
+          <span className={'streak-badge' + (streak.includesToday ? '' : ' pending')}>
+            {fa(streak.days)} روز پیاپی{!streak.includesToday ? ' · امروز رو ثبت کن' : ''}
+          </span>
+        )}
+      </div>
 
       {todaysMeetings.length > 0 && (
         <>

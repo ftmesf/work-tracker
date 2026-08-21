@@ -16,6 +16,7 @@ import TimeReport from './sections/TimeReport.jsx'
 import ColdCategories from './sections/ColdCategories.jsx'
 import Trend from './sections/Trend.jsx'
 import Heatmap from './sections/Heatmap.jsx'
+import WeeklyReview from './sections/WeeklyReview.jsx'
 import Blockers from './sections/Blockers.jsx'
 import Manage from './sections/Manage.jsx'
 import TextExport from './sections/TextExport.jsx'
@@ -87,6 +88,7 @@ export default function App() {
       <ColdCategories db={db} range={range} today={today} />
       <Trend db={db} today={today} />
       <Heatmap db={db} today={today} />
+      <WeeklyReview db={db} range={range} today={today} />
       <Blockers db={db} />
       <Manage db={db} />
       <TextExport db={db} range={range} />

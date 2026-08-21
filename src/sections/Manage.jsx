@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BUCKETS, PROJECT_STATUSES } from '../lib/constants.js'
 import { fa } from '../lib/jalali.js'
 import { insert, update } from '../lib/store.js'
@@ -9,11 +9,15 @@ export default function Manage({ db }) {
   const [tab, setTab] = useState('categories')
   const [bucket, setBucket] = useState('company')
   const [newName, setNewName] = useState('')
+  const [newTmplTitle, setNewTmplTitle] = useState('')
+  const [newTmplCat, setNewTmplCat] = useState('')
 
   const cats = (db.categories || [])
     .filter((c) => c.bucket === bucket)
     .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, 'fa'))
   const projs = (db.projects || []).filter((p) => p.bucket === bucket)
+  const templates = (db.task_templates || []).filter((t) => t.bucket === bucket)
+  const catById = new Map((db.categories || []).map((c) => [c.id, c]))
 
   const usageCount = (catId) => (db.tasks || []).filter((t) => t.category_id === catId).length
   const projUsage = (pid) => (db.tasks || []).filter((t) => t.project_id === pid).length
@@ -30,6 +34,25 @@ export default function Manage({ db }) {
     toast('اضافه شد')
   }
 
+  const addTemplate = () => {
+    const title = newTmplTitle.trim()
+    if (!title || !newTmplCat) return
+    insert('task_templates', {
+      title,
+      bucket,
+      category_id: newTmplCat,
+      project_id: null,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    })
+    setNewTmplTitle('')
+    toast('الگو اضافه شد')
+  }
+
+  useEffect(() => {
+    setNewTmplCat((c) => (cats.some((x) => x.id === c) ? c : cats[0]?.id || ''))
+  }, [bucket, cats])
+
   const move = (list, i, dir) => {
     const j = i + dir
     if (j < 0 || j >= list.length) return
@@ -38,7 +61,7 @@ export default function Manage({ db }) {
   }
 
   return (
-    <Fold n={13} id="manage" title="دسته‌ها و پروژه‌ها">
+    <Fold n={14} id="manage" title="دسته‌ها و پروژه‌ها">
       <div className="chips" style={{ marginBottom: 8 }}>
         <button
           className={'chip' + (tab === 'categories' ? ' on neutral' : '')}
@@ -51,6 +74,12 @@ export default function Manage({ db }) {
           onClick={() => setTab('projects')}
         >
           پروژه‌ها
+        </button>
+        <button
+          className={'chip' + (tab === 'templates' ? ' on neutral' : '')}
+          onClick={() => setTab('templates')}
+        >
+          الگوها
         </button>
       </div>
 
@@ -96,57 +125,112 @@ export default function Manage({ db }) {
             </div>
           ))
         )
-      ) : projs.length === 0 ? (
-        <div className="empty">پروژه‌ای در این سطل نیست.</div>
+      ) : tab === 'projects' ? (
+        projs.length === 0 ? (
+          <div className="empty">پروژه‌ای در این سطل نیست.</div>
+        ) : (
+          projs.map((p) => (
+            <div className={'manage-row' + (p.status === 'done' ? ' off' : '')} key={p.id}>
+              <input
+                className="grow"
+                type="text"
+                defaultValue={p.name}
+                onBlur={(e) => {
+                  const v = e.target.value.trim()
+                  if (v && v !== p.name) update('projects', p.id, { name: v })
+                  else e.target.value = p.name
+                }}
+              />
+              <span className="small faint nums" style={{ width: 42, textAlign: 'center' }}>
+                {fa(projUsage(p.id))}
+              </span>
+              <select
+                value={p.status}
+                onChange={(e) => {
+                  const status = e.target.value
+                  update('projects', p.id, {
+                    status,
+                    ended_on: status === 'done' ? p.ended_on || new Date().toISOString().slice(0, 10) : null,
+                  })
+                }}
+                style={{ width: 110, minHeight: 36, padding: '5px 8px', fontSize: 13.5 }}
+              >
+                {PROJECT_STATUSES.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          ))
+        )
+      ) : templates.length === 0 ? (
+        <div className="empty">الگویی در این سطل نیست.</div>
       ) : (
-        projs.map((p) => (
-          <div className={'manage-row' + (p.status === 'done' ? ' off' : '')} key={p.id}>
+        templates.map((t) => (
+          <div className={'manage-row' + (t.is_active === false ? ' off' : '')} key={t.id}>
             <input
               className="grow"
               type="text"
-              defaultValue={p.name}
+              defaultValue={t.title}
               onBlur={(e) => {
                 const v = e.target.value.trim()
-                if (v && v !== p.name) update('projects', p.id, { name: v })
-                else e.target.value = p.name
+                if (v && v !== t.title) update('task_templates', t.id, { title: v })
+                else e.target.value = t.title
               }}
             />
-            <span className="small faint nums" style={{ width: 42, textAlign: 'center' }}>
-              {fa(projUsage(p.id))}
+            <span className="small faint" style={{ minWidth: 90, textAlign: 'center' }}>
+              {catById.get(t.category_id)?.name || '—'}
             </span>
-            <select
-              value={p.status}
-              onChange={(e) => {
-                const status = e.target.value
-                update('projects', p.id, {
-                  status,
-                  ended_on: status === 'done' ? p.ended_on || new Date().toISOString().slice(0, 10) : null,
-                })
-              }}
-              style={{ width: 110, minHeight: 36, padding: '5px 8px', fontSize: 13.5 }}
+            <button
+              className="btn sm"
+              onClick={() => update('task_templates', t.id, { is_active: t.is_active === false })}
             >
-              {PROJECT_STATUSES.map((s) => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
+              {t.is_active === false ? 'فعال' : 'غیرفعال'}
+            </button>
           </div>
         ))
       )}
 
-      <div className="row" style={{ marginTop: 12 }}>
-        <input
-          className="grow"
-          type="text"
-          value={newName}
-          placeholder={tab === 'categories' ? 'دسته‌ی جدید' : 'پروژه‌ی جدید'}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') add() }}
-        />
-        <button className="btn primary" onClick={add} disabled={!newName.trim()}>اضافه</button>
-      </div>
+      {tab === 'templates' ? (
+        <div className="row" style={{ marginTop: 12 }}>
+          <input
+            className="grow"
+            type="text"
+            value={newTmplTitle}
+            placeholder="عنوان الگو"
+            onChange={(e) => setNewTmplTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addTemplate() }}
+          />
+          <select
+            value={newTmplCat}
+            onChange={(e) => setNewTmplCat(e.target.value)}
+            style={{ width: 140, minHeight: 46 }}
+          >
+            {cats.length === 0 && <option value="">دسته‌ای نیست</option>}
+            {cats.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <button className="btn primary" onClick={addTemplate} disabled={!newTmplTitle.trim() || !newTmplCat}>
+            اضافه
+          </button>
+        </div>
+      ) : (
+        <div className="row" style={{ marginTop: 12 }}>
+          <input
+            className="grow"
+            type="text"
+            value={newName}
+            placeholder={tab === 'categories' ? 'دسته‌ی جدید' : 'پروژه‌ی جدید'}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') add() }}
+          />
+          <button className="btn primary" onClick={add} disabled={!newName.trim()}>اضافه</button>
+        </div>
+      )}
       <div className="small faint" style={{ marginTop: 6 }}>
-        عدد کنار هر ردیف یعنی چند کار به آن وصل است. غیرفعال کردن، داده‌ی قدیمی را پاک نمی‌کند —
-        فقط از فرم ثبت برداشته می‌شود.
+        {tab === 'templates'
+          ? 'الگوها فقط برای پرکردن سریع فرم ثبتن — خودشان زمان نمی‌گیرند. غیرفعال کردن، الگو را از چیپ‌های ثبت سریع برمی‌دارد.'
+          : 'عدد کنار هر ردیف یعنی چند کار به آن وصل است. غیرفعال کردن، داده‌ی قدیمی را پاک نمی‌کند — فقط از فرم ثبت برداشته می‌شود.'}
       </div>
     </Fold>
   )

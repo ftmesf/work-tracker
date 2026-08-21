@@ -1,7 +1,9 @@
 // تست‌های سبک بدون هیچ کتابخانه‌ای:  node tests/run.mjs
 import assert from 'node:assert/strict'
 import * as J from '../src/lib/jalali.js'
-import { buildReport, coldCategories, bucketSplit, dailyBreakdown, toMarkdown } from '../src/lib/report.js'
+import {
+  buildReport, coldCategories, bucketSplit, dailyBreakdown, toMarkdown, streakInfo, categoryComparison,
+} from '../src/lib/report.js'
 import { toCSV } from '../src/lib/backup.js'
 
 let pass = 0
@@ -239,6 +241,31 @@ test('خروجی مارک‌داون: گروه‌بندی، جمع زمان، ع
   assert.ok(md.includes('**باز**'), 'تعهد باز باید علامت بخورد')
   assert.ok(!md.includes('کار بایگانی‌شده'))
   assert.ok(md.includes('۱۴۰۵'), 'تاریخ باید شمسی باشد')
+})
+
+// ------------------------------------------------------- استریک و مقایسه
+group('استریک و مقایسه')
+
+test('استریک وقتی امروز هم ثبت شده', () => {
+  assert.deepEqual(streakInfo(db, '2026-08-18'), { days: 4, includesToday: true })
+})
+
+test('استریک وقتی امروز هنوز ثبت نشده ولی دیروز داشته', () => {
+  assert.deepEqual(streakInfo(db, '2026-08-19'), { days: 4, includesToday: false })
+})
+
+test('استریک صفر وقتی چند روزه چیزی نیست', () => {
+  assert.deepEqual(streakInfo(db, '2026-08-14'), { days: 0, includesToday: false })
+})
+
+test('مقایسه‌ی دسته‌ها با بازه‌ی هم‌طولِ قبلی', () => {
+  const cmp = categoryComparison(db, range)
+  assert.equal(cmp.prevRange.from, '2026-08-08')
+  assert.equal(cmp.prevRange.to, '2026-08-14')
+  assert.equal(cmp.rows.every((r) => r.prevMinutes === 0), true) // بازه‌ی قبل داده ندارد
+  assert.deepEqual(cmp.rows.map((r) => r.id), ['c1', 'c3', 'c2', 'c4']) // مرتب‌شده بر اساس بزرگیِ تغییر
+  assert.equal(cmp.rows[0].curMinutes, 180)
+  assert.equal(cmp.rows[0].pct, 100)
 })
 
 // -------------------------------------------------------------------- بکاپ

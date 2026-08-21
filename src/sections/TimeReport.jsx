@@ -1,6 +1,6 @@
 import { bucketOf } from '../lib/constants.js'
 import { fa, minutesToHM, rangeLabel } from '../lib/jalali.js'
-import { buildReport } from '../lib/report.js'
+import { buildReport, categoryComparison } from '../lib/report.js'
 import { Card } from '../ui.jsx'
 import { usePersisted } from '../useStore.js'
 
@@ -52,14 +52,54 @@ function Table({ rows, total, showBucketDot }) {
   )
 }
 
+function CompareTable({ rows, prevRange }) {
+  const withData = rows.filter((r) => r.curMinutes || r.prevMinutes)
+  if (!withData.length) return <div className="empty">داده‌ای برای مقایسه نیست.</div>
+  return (
+    <>
+      <div className="small faint" style={{ marginBottom: 8 }}>
+        نسبت به {rangeLabel(prevRange.from, prevRange.to)}
+      </div>
+      <table className="tbl">
+        <thead>
+          <tr>
+            <th>دسته</th>
+            <th className="num">این بازه</th>
+            <th className="num">بازه‌ی قبل</th>
+            <th className="num">تغییر</th>
+          </tr>
+        </thead>
+        <tbody>
+          {withData.map((r) => (
+            <tr key={r.id}>
+              <td className="name">{r.name}</td>
+              <td className="num">{r.curMinutes ? minutesToHM(r.curMinutes) : '—'}</td>
+              <td className="num muted">{r.prevMinutes ? minutesToHM(r.prevMinutes) : '—'}</td>
+              <td className="num">
+                {r.prevMinutes
+                  ? (r.delta > 0 ? '+' : '') + fa(Math.round(r.pct)) + '٪'
+                  : r.curMinutes
+                    ? 'جدید'
+                    : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )
+}
+
 export default function TimeReport({ db, range }) {
   const [view, setView] = usePersisted('wt.reportView', 'category')
   const r = buildReport(db, range)
+  const cmp = view === 'compare' ? categoryComparison(db, range) : null
 
   const views = {
     bucket: { label: 'سطل', rows: r.byBucket.filter((b) => b.minutes || b.taskCount) },
     category: { label: 'دسته', rows: r.byCategory },
     project: { label: 'پروژه', rows: r.byProject },
+    compare: { label: 'مقایسه' },
   }
 
   return (
@@ -81,8 +121,12 @@ export default function TimeReport({ db, range }) {
         </div>
       }
     >
-      <Table rows={views[view].rows} total={r.totalMinutes} showBucketDot={view !== 'bucket'} />
-      {r.tasks.some((t) => t.noMinutesCount > 0) && (
+      {view === 'compare' ? (
+        <CompareTable rows={cmp.rows} prevRange={cmp.prevRange} />
+      ) : (
+        <Table rows={views[view].rows} total={r.totalMinutes} showBucketDot={view !== 'bucket'} />
+      )}
+      {view !== 'compare' && r.tasks.some((t) => t.noMinutesCount > 0) && (
         <div className="small faint" style={{ marginTop: 8 }}>
           بعضی رکوردها دقیقه ندارند — در تعداد هستند، در جمع زمان نه.
         </div>

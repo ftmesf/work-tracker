@@ -91,6 +91,29 @@ create table if not exists meetings (
   cancelled_at timestamptz
 );
 
+-- الگوی کار تکرارشونده — پرکردن سریع ثبت سریع، خودش زمان نمی‌گیرد
+create table if not exists task_templates (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  bucket bucket_t not null,
+  category_id uuid references categories(id),
+  project_id uuid references projects(id),
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
+
+-- مرور دوره‌ای — یک رکورد برای هر بازه‌ی زمانی که مرور شده
+create table if not exists reviews (
+  id uuid primary key default gen_random_uuid(),
+  range_from date not null,
+  range_to date not null,
+  wins text,
+  stuck text,
+  next text,
+  created_at timestamptz default now(),
+  unique (range_from, range_to)
+);
+
 create index if not exists time_logs_day_idx    on time_logs (occurred_on);
 create index if not exists time_logs_task_idx   on time_logs (task_id);
 create index if not exists tasks_created_idx    on tasks (created_on);
@@ -108,7 +131,7 @@ create index if not exists meetings_day_idx     on meetings (day);
 do $$
 declare t text;
 begin
-  foreach t in array array['categories','projects','tasks','time_logs','attendance','pinned_notes','blockers','meetings']
+  foreach t in array array['categories','projects','tasks','time_logs','attendance','pinned_notes','blockers','meetings','task_templates','reviews']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists anon_all on %I', t);

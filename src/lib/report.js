@@ -1,6 +1,6 @@
 // همه‌ی محاسبه‌های گزارشی. هیچ‌جا داده تغییر نمی‌کند — فقط خوانده می‌شود.
 import { BUCKETS, bucketOf, statusLabel } from './constants.js'
-import { daysBetween, fa, formatDate, minutesToHM, rangeLabel } from './jalali.js'
+import { addDays, daysBetween, fa, formatDate, minutesToHM, rangeLabel } from './jalali.js'
 
 const inRange = (d, r) => !!d && d >= r.from && d <= r.to
 
@@ -204,6 +204,51 @@ export function hasActivityOn(db, day) {
   if (tasks.some((t) => t.created_on === day)) return true
   const ids = new Set(tasks.map((t) => t.id))
   return (db.time_logs || []).some((l) => l.occurred_on === day && ids.has(l.task_id))
+}
+
+/** چند روز پیاپی (تا امروز یا تا دیروز) چیزی ثبت شده */
+export function streakInfo(db, today) {
+  const includesToday = hasActivityOn(db, today)
+  let day = includesToday ? today : addDays(today, -1)
+  let days = 0
+  while (hasActivityOn(db, day)) {
+    days += 1
+    day = addDays(day, -1)
+  }
+  return { days, includesToday }
+}
+
+/** مقایسه‌ی زمان هر دسته با بازه‌ی هم‌طولِ درست قبل از این بازه */
+export function categoryComparison(db, range) {
+  const len = daysBetween(range.from, range.to) + 1
+  const prevTo = addDays(range.from, -1)
+  const prevFrom = addDays(prevTo, -(len - 1))
+  const prevRange = { from: prevFrom, to: prevTo }
+
+  const cur = buildReport(db, range)
+  const prev = buildReport(db, prevRange)
+  const curById = new Map(cur.byCategory.map((c) => [c.id, c]))
+  const prevById = new Map(prev.byCategory.map((c) => [c.id, c]))
+  const ids = new Set([...curById.keys(), ...prevById.keys()])
+
+  const rows = [...ids]
+    .map((id) => {
+      const curMinutes = curById.get(id)?.minutes || 0
+      const prevMinutes = prevById.get(id)?.minutes || 0
+      const delta = curMinutes - prevMinutes
+      const pct = prevMinutes ? (delta / prevMinutes) * 100 : curMinutes ? 100 : 0
+      return {
+        id,
+        name: (curById.get(id) || prevById.get(id)).name,
+        curMinutes,
+        prevMinutes,
+        delta,
+        pct,
+      }
+    })
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+
+  return { rows, prevRange }
 }
 
 // ----------------------------------------------------------------- مارک‌داون
