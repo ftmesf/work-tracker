@@ -65,6 +65,15 @@ export function Pin({ size = 15, className }) {
   )
 }
 
+export function Clock({ size = 14, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l3 2" />
+    </svg>
+  )
+}
+
 export function CloudSync({ size = 14, className }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>

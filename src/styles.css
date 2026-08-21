@@ -222,6 +222,28 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 }
 .sub:first-child { margin-top: 0; }
 
+.meeting-today {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  background: #fff;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius);
+  margin-bottom: var(--sp-2);
+}
+.meeting-today .tm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #92400e;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.meeting-today .t { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+
 /* ------------------------------------------------------------------ فرم‌ها */
 input, select, textarea, button {
   font-family: inherit;

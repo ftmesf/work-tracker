@@ -3,7 +3,7 @@ import { fa, formatDate } from '../lib/jalali.js'
 import { hasActivityOn, openCommitments } from '../lib/report.js'
 import { bucketOf } from '../lib/constants.js'
 import { insert, setTaskStatus, update } from '../lib/store.js'
-import { Pin as PinIcon, Plus } from '../icons.jsx'
+import { Clock, Pin as PinIcon, Plus } from '../icons.jsx'
 import { toast } from '../ui.jsx'
 
 export default function Reminders({ db, today }) {
@@ -13,6 +13,10 @@ export default function Reminders({ db, today }) {
 
   const commitments = openCommitments(db, today)
   const pins = (db.pinned_notes || []).filter((p) => !p.dismissed_at)
+  const todaysMeetings = (db.meetings || [])
+    .filter((m) => !m.cancelled_at && m.day === today)
+    .slice()
+    .sort((a, b) => (a.time_at || '').localeCompare(b.time_at || ''))
   const nothingToday = !hasActivityOn(db, today)
   const shown = showAll ? commitments : commitments.slice(0, 5)
   const quiet = !nothingToday && !commitments.length && !pins.length
@@ -29,6 +33,20 @@ export default function Reminders({ db, today }) {
   return (
     <section className={'remind' + (quiet ? ' remind-empty' : '')}>
       <h2>یادآور</h2>
+
+      {todaysMeetings.length > 0 && (
+        <>
+          <div className="sub">جلسه‌های امروز</div>
+          {todaysMeetings.map((m) => (
+            <div className="meeting-today" key={m.id}>
+              {m.time_at && (
+                <span className="tm"><Clock size={12} />{m.time_at}</span>
+              )}
+              <span className="t">{m.title}</span>
+            </div>
+          ))}
+        </>
+      )}
 
       {nothingToday && (
         <div className="nothing-today">
