@@ -4,7 +4,7 @@ import { hasActivityOn, openCommitments, streakInfo } from '../lib/report.js'
 import { bucketOf } from '../lib/constants.js'
 import { insert, setTaskStatus, update } from '../lib/store.js'
 import { Clock, Pin as PinIcon, Plus } from '../icons.jsx'
-import { toast } from '../ui.jsx'
+import { requestQuickAdd, toast } from '../ui.jsx'
 
 export default function Reminders({ db, today }) {
   const [showAll, setShowAll] = useState(false)
@@ -51,6 +51,9 @@ export default function Reminders({ db, today }) {
                 <span className="tm"><Clock size={12} />{m.time_at}</span>
               )}
               <span className="t">{m.title}</span>
+              <button className="btn sm" onClick={() => requestQuickAdd({ title: m.title })}>
+                ثبت زمان
+              </button>
             </div>
           ))}
         </>

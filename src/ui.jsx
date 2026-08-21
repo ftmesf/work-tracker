@@ -166,3 +166,12 @@ export function Toaster() {
     <div className="toast"><div>{msg}</div></div>
   )
 }
+
+// ------------------------------------------------------- ثبت سریع از بیرون
+let onQuickAddRequest = () => {}
+export function requestQuickAdd(data) {
+  onQuickAddRequest(data)
+}
+export function setQuickAddHandler(fn) {
+  onQuickAddRequest = fn
+}

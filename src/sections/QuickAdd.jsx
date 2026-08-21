@@ -3,7 +3,7 @@ import { BUCKETS } from '../lib/constants.js'
 import { formatDate, minutesToHM, todayISO } from '../lib/jalali.js'
 import { similarOpenTasks } from '../lib/report.js'
 import { addTask, addTimeLog, insert } from '../lib/store.js'
-import { Card, DateField, toast } from '../ui.jsx'
+import { Card, DateField, setQuickAddHandler, toast } from '../ui.jsx'
 import { usePersisted } from '../useStore.js'
 
 export default function QuickAdd({ db, today }) {
@@ -16,6 +16,7 @@ export default function QuickAdd({ db, today }) {
   const [notDone, setNotDone] = useState(false)
   const [date, setDate] = useState(today)
   const titleRef = useRef(null)
+  const minutesRef = useRef(null)
 
   const cats = useMemo(
     () =>
@@ -43,6 +44,26 @@ export default function QuickAdd({ db, today }) {
 
   // اگر تاریخ روی «امروز» بود و نیمه‌شب شد، خودش جلو بیاید
   useEffect(() => { setDate((d) => (d < today ? d : today)) }, [today])
+
+  // درخواست ثبت زمان از بیرون (مثلاً روی جلسه‌ی امروز) — عنوان و دسته‌ی «جلسه‌ها» را پر می‌کند
+  useEffect(() => {
+    setQuickAddHandler((data) => {
+      const meetingCat = (db.categories || []).find(
+        (c) => c.bucket === 'company' && c.name === 'جلسه‌ها' && c.is_active !== false
+      )
+      if (bucket === 'company') {
+        if (meetingCat && cats.some((c) => c.id === meetingCat.id)) setCategoryId(meetingCat.id)
+      } else {
+        if (meetingCat) setLastCat((prev) => ({ ...prev, company: meetingCat.id }))
+        setBucket('company')
+      }
+      setTitle(data.title)
+      setMinutes('')
+      document.getElementById('quickadd-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setTimeout(() => minutesRef.current?.focus(), 300)
+    })
+    return () => setQuickAddHandler(() => {})
+  })
 
   const similar = useMemo(
     () => similarOpenTasks(db, title, bucket),
@@ -102,7 +123,7 @@ export default function QuickAdd({ db, today }) {
   const canSubmit = title.trim().length > 0 && !!categoryId
 
   return (
-    <Card n={3} title="ثبت سریع">
+    <Card n={3} title="ثبت سریع" id="quickadd-anchor">
       <div className="chips" style={{ marginBottom: 8 }}>
         {BUCKETS.map((b) => (
           <button
@@ -167,6 +188,7 @@ export default function QuickAdd({ db, today }) {
           ))}
         </select>
         <input
+          ref={minutesRef}
           type="number"
           inputMode="numeric"
           min="0"
