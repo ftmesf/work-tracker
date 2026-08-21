@@ -16,6 +16,7 @@ import { todayISO } from './jalali.js'
 const LS_DB = 'wt.db.v1'
 const LS_DIRTY = 'wt.dirty.v1'
 const LS_CFG = 'wt.supabase.v1'
+const LS_SEEDED = 'wt.seeded.v1'
 
 // ترتیب مهم است: کلید خارجی. دسته و پروژه قبل از کار، کار قبل از زمان.
 const PUSH_ORDER = ['categories', 'projects', 'tasks', 'time_logs', 'attendance', 'pinned_notes', 'blockers', 'meetings', 'task_templates', 'reviews']
@@ -289,6 +290,19 @@ export function mergeCategories(keepId, dupIds) {
   for (const id of dups) update('categories', id, { is_active: false })
 }
 
+/** مثل mergeCategories ولی برای پروژه‌ها — چون پروژه is_active ندارد، دوپلیکیت‌ها status: 'done' می‌گیرند */
+export function mergeProjects(keepId, dupIds) {
+  const dups = new Set(dupIds.filter((id) => id !== keepId))
+  if (!dups.size) return
+  for (const t of db.tasks) {
+    if (dups.has(t.project_id)) update('tasks', t.id, { project_id: keepId })
+  }
+  for (const t of db.task_templates) {
+    if (dups.has(t.project_id)) update('task_templates', t.id, { project_id: keepId })
+  }
+  for (const id of dups) update('projects', id, { status: 'done' })
+}
+
 // --------------------------------------------------------------- عملیات‌ها
 export function addTask({ title, bucket, category_id, project_id, minutes, done, date, note }) {
   const day = date || todayISO()
@@ -361,6 +375,7 @@ const SEED_PROJECTS = [
 ]
 
 export function seed() {
+  try { localStorage.setItem(LS_SEEDED, '1') } catch {}
   let sort = 0
   let lastBucket = null
   for (const [bucket, name] of SEED_CATEGORIES) {
@@ -372,6 +387,57 @@ export function seed() {
   }
   for (const [bucket, name] of SEED_PROJECTS) {
     insert('projects', { name, bucket, status: 'active', started_on: null, ended_on: null })
+  }
+}
+
+function wasSeededBefore() {
+  try { return localStorage.getItem(LS_SEEDED) === '1' } catch { return false }
+}
+
+/**
+ * دسته‌های هم‌نامِ هم‌سطل را ادغام می‌کند — این تکرار قبلاً از این پیش می‌آمد
+ * که seed() بیش از یک‌بار روی همین مرورگر اجرا می‌شد (هر بار قبل از این‌که pull
+ * موفق شود). آن مسیر با LS_SEEDED بسته شده؛ این تابع فقط داده‌ی قدیمی را که از
+ * قبل تکراری ساخته شده پاک می‌کند. دسته‌ای که کار روش ثبت شده برنده می‌ماند.
+ */
+function dedupeCategories() {
+  const groups = new Map()
+  for (const c of db.categories) {
+    if (c.is_active === false) continue
+    const key = c.bucket + ' ' + c.name
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(c)
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue
+    const usage = new Map(group.map((c) => [c.id, 0]))
+    for (const t of db.tasks) {
+      if (usage.has(t.category_id)) usage.set(t.category_id, usage.get(t.category_id) + 1)
+    }
+    group.sort((a, b) => (usage.get(b.id) - usage.get(a.id)) || (a.sort ?? 0) - (b.sort ?? 0))
+    const [keep, ...dups] = group
+    mergeCategories(keep.id, dups.map((d) => d.id))
+  }
+}
+
+/** همان مشکل dedupeCategories ولی برای پروژه‌ها — پروژه‌ی «done» را هم‌نامِ تکراری نمی‌شمریم */
+function dedupeProjects() {
+  const groups = new Map()
+  for (const p of db.projects) {
+    if (p.status === 'done') continue
+    const key = p.bucket + ' ' + p.name
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(p)
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue
+    const usage = new Map(group.map((p) => [p.id, 0]))
+    for (const t of db.tasks) {
+      if (usage.has(t.project_id)) usage.set(t.project_id, usage.get(t.project_id) + 1)
+    }
+    group.sort((a, b) => usage.get(b.id) - usage.get(a.id))
+    const [keep, ...dups] = group
+    mergeProjects(keep.id, dups.map((d) => d.id))
   }
 }
 
@@ -393,7 +459,7 @@ async function maybeSeedAfterPull() {
     setTimeout(maybeSeedAfterPull, 15000)
     return
   }
-  if (isEmpty() && db.categories.length === 0) {
+  if (isEmpty() && db.categories.length === 0 && !wasSeededBefore()) {
     seed()
     emit()
   }
@@ -429,10 +495,12 @@ export async function init() {
   }
 
   if (!supabase) {
-    if (db.categories.length === 0) seed()
+    if (db.categories.length === 0 && !wasSeededBefore()) seed()
   } else {
     await maybeSeedAfterPull()
   }
 
+  dedupeCategories()
+  dedupeProjects()
   emit()
 }

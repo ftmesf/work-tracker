@@ -47,8 +47,12 @@ export default function TaskList({ db, range, today }) {
     })
   }, [db, range, f])
 
-  const catsForFilter = (db.categories || []).filter((c) => !f.bucket || c.bucket === f.bucket)
-  const projsForFilter = (db.projects || []).filter((p) => !f.bucket || p.bucket === f.bucket)
+  const catsForFilter = (db.categories || []).filter(
+    (c) => c.is_active !== false && (!f.bucket || c.bucket === f.bucket)
+  )
+  const projsForFilter = (db.projects || []).filter(
+    (p) => p.status !== 'done' && (!f.bucket || p.bucket === f.bucket)
+  )
 
   const doLog = (taskId) => {
     addTimeLog(taskId, today, logMin, null)
@@ -80,15 +84,39 @@ export default function TaskList({ db, range, today }) {
       <div className="cols3" style={{ marginBottom: 8 }}>
         <select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
           <option value="">همه‌ی دسته‌ها</option>
-          {catsForFilter.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
+          {f.bucket
+            ? catsForFilter.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))
+            : BUCKETS.map((b) => {
+                const bCats = catsForFilter.filter((c) => c.bucket === b.id)
+                if (!bCats.length) return null
+                return (
+                  <optgroup key={b.id} label={b.label}>
+                    {bCats.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </optgroup>
+                )
+              })}
         </select>
         <select value={f.project} onChange={(e) => setF({ ...f, project: e.target.value })}>
           <option value="">همه‌ی پروژه‌ها</option>
-          {projsForFilter.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
+          {f.bucket
+            ? projsForFilter.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))
+            : BUCKETS.map((b) => {
+                const bProjs = projsForFilter.filter((p) => p.bucket === b.id)
+                if (!bProjs.length) return null
+                return (
+                  <optgroup key={b.id} label={b.label}>
+                    {bProjs.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </optgroup>
+                )
+              })}
         </select>
         <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
           <option value="">همه‌ی وضعیت‌ها</option>
