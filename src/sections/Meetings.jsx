@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { daysBetween, fa } from '../lib/jalali.js'
+import { WEEKDAYS_SHORT, addDays, daysBetween, fa, weekStart } from '../lib/jalali.js'
 import { insert, update } from '../lib/store.js'
 import { Plus } from '../icons.jsx'
 import { Card, DateField, toast } from '../ui.jsx'
@@ -20,21 +20,40 @@ export default function Meetings({ db, today }) {
     .slice()
     .sort((a, b) => (a.day + (a.time_at || '')).localeCompare(b.day + (b.time_at || '')))
 
-  const start = () => setForm({ title: '', day: today, time_at: '' })
+  const start = () => setForm({ title: '', day: today, time_at: '', repeat: null })
+
+  const toggleRepeatDay = (idx) => {
+    setForm((f) => {
+      const days = f.repeat.days.includes(idx)
+        ? f.repeat.days.filter((d) => d !== idx)
+        : [...f.repeat.days, idx].sort()
+      return { ...f, repeat: { ...f.repeat, days } }
+    })
+  }
+
+  const canSave = form && form.title.trim().length > 0 && (!form.repeat || form.repeat.days.length > 0)
 
   const save = () => {
+    if (!canSave) return
     const title = form.title.trim()
-    if (!title) return
-    insert('meetings', {
-      title,
-      day: form.day,
-      time_at: form.time_at || null,
-      note: null,
-      created_at: new Date().toISOString(),
-      cancelled_at: null,
-    })
+    const base = { title, time_at: form.time_at || null, note: null, cancelled_at: null }
+
+    if (form.repeat && form.repeat.days.length > 0) {
+      const weekBase = weekStart(form.day)
+      const weeks = Math.max(1, Number(form.repeat.weeks) || 1)
+      let count = 0
+      for (let w = 0; w < weeks; w++) {
+        for (const wd of form.repeat.days) {
+          insert('meetings', { ...base, day: addDays(weekBase, w * 7 + wd), created_at: new Date().toISOString() })
+          count++
+        }
+      }
+      toast(`${fa(count)} جلسه ثبت شد`)
+    } else {
+      insert('meetings', { ...base, day: form.day, created_at: new Date().toISOString() })
+      toast('جلسه ثبت شد')
+    }
     setForm(null)
-    toast('جلسه ثبت شد')
   }
 
   const cancel = (m) => {
@@ -85,8 +104,53 @@ export default function Meetings({ db, today }) {
               onChange={(e) => setForm({ ...form, time_at: e.target.value })}
             />
           </label>
+
+          {form.repeat ? (
+            <div style={{ marginBottom: 10 }}>
+              <span className="small muted" style={{ display: 'block', marginBottom: 4 }}>
+                تکرار در این روزها
+              </span>
+              <div className="chips" style={{ marginBottom: 8 }}>
+                {WEEKDAYS_SHORT.map((d, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={'chip' + (form.repeat.days.includes(i) ? ' on neutral' : '')}
+                    onClick={() => toggleRepeatDay(i)}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+              <div className="row" style={{ gap: 10, alignItems: 'flex-end' }}>
+                <label className="field grow" style={{ marginBottom: 0 }}>
+                  <span>چند هفته؟</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={form.repeat.weeks}
+                    onChange={(e) => setForm({ ...form, repeat: { ...form.repeat, weeks: e.target.value } })}
+                  />
+                </label>
+                <button className="btn sm ghost" onClick={() => setForm({ ...form, repeat: null })}>
+                  بدون تکرار
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn sm ghost"
+              style={{ marginBottom: 10 }}
+              onClick={() => setForm({ ...form, repeat: { days: [], weeks: 1 } })}
+            >
+              تکرار در چند روز هفته
+            </button>
+          )}
+
           <div className="row">
-            <button className="btn primary grow" onClick={save}>ثبت جلسه</button>
+            <button className="btn primary grow" onClick={save} disabled={!canSave}>ثبت جلسه</button>
             <button className="btn ghost" onClick={() => setForm(null)}>لغو</button>
           </div>
         </div>
