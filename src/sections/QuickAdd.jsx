@@ -63,7 +63,7 @@ export default function QuickAdd({ db, today }) {
       setTimeout(() => minutesRef.current?.focus(), 300)
     })
     return () => setQuickAddHandler(() => {})
-  })
+  }, [bucket, cats, db.categories, setLastCat])
 
   const similar = useMemo(
     () => similarOpenTasks(db, title, bucket),

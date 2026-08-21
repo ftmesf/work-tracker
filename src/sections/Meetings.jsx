@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { WEEKDAYS_SHORT, addDays, daysBetween, fa, weekStart } from '../lib/jalali.js'
-import { insert, update } from '../lib/store.js'
+import { insert, insertMany, update } from '../lib/store.js'
 import { Plus } from '../icons.jsx'
 import { Card, DateField, toast } from '../ui.jsx'
 
@@ -41,14 +41,14 @@ export default function Meetings({ db, today }) {
     if (form.repeat && form.repeat.days.length > 0) {
       const weekBase = weekStart(form.day)
       const weeks = Math.max(1, Number(form.repeat.weeks) || 1)
-      let count = 0
+      const rows = []
       for (let w = 0; w < weeks; w++) {
         for (const wd of form.repeat.days) {
-          insert('meetings', { ...base, day: addDays(weekBase, w * 7 + wd), created_at: new Date().toISOString() })
-          count++
+          rows.push({ ...base, day: addDays(weekBase, w * 7 + wd), created_at: new Date().toISOString() })
         }
       }
-      toast(`${fa(count)} جلسه ثبت شد`)
+      insertMany('meetings', rows)
+      toast(`${fa(rows.length)} جلسه ثبت شد`)
     } else {
       insert('meetings', { ...base, day: form.day, created_at: new Date().toISOString() })
       toast('جلسه ثبت شد')

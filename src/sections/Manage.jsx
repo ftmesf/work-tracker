@@ -53,11 +53,17 @@ export default function Manage({ db }) {
     setNewTmplCat((c) => (cats.some((x) => x.id === c) ? c : cats[0]?.id || ''))
   }, [bucket, cats])
 
+  // کل لیست را دوباره شماره‌گذاری می‌کند (نه فقط دو تای جابه‌جاشده) تا اگر
+  // sort قبلاً به‌خاطر اضافه/غیرفعال‌شدن ردیف‌ها پیاپی نبود، خودش را درست کند
   const move = (list, i, dir) => {
     const j = i + dir
     if (j < 0 || j >= list.length) return
-    update('categories', list[i].id, { sort: j })
-    update('categories', list[j].id, { sort: i })
+    const reordered = list.slice()
+    const [item] = reordered.splice(i, 1)
+    reordered.splice(j, 0, item)
+    reordered.forEach((c, idx) => {
+      if (c.sort !== idx) update('categories', c.id, { sort: idx })
+    })
   }
 
   return (

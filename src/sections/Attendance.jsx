@@ -99,6 +99,11 @@ export default function Attendance({ db, today, range }) {
                     />
                   </label>
                 </div>
+                {rec?.arrived_at && rec?.left_at && rec.left_at <= rec.arrived_at && (
+                  <div className="small" style={{ color: 'var(--danger)', margin: '6px 0' }}>
+                    ساعت خروج باید بعد از ساعت ورود باشد — این روز در جمع ساعت‌ها حساب نمی‌شود.
+                  </div>
+                )}
                 <input
                   type="text"
                   placeholder="یادداشت (اختیاری)"

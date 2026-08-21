@@ -124,9 +124,13 @@ create index if not exists meetings_day_idx     on meetings (day);
 -- دسترسی
 --
 -- خواسته‌ات این بود: بدون لاگین و بدون رمز. پس سیاست زیر به کلید عمومی اپ
--- اجازه‌ی خواندن و نوشتن می‌دهد. یعنی هر کسی که آدرس اپ و کلید anon را داشته
--- باشد، به داده دسترسی دارد. چون اسم هیچ آدمی در داده نیست، ریسکش پایین است،
--- ولی صفر نیست — آدرس Vercel را جایی منتشر نکن.
+-- اجازه‌ی خواندن، درج و به‌روزرسانی می‌دهد. یعنی هر کسی که آدرس اپ و کلید anon
+-- را داشته باشد، به داده دسترسی دارد. چون اسم هیچ آدمی در داده نیست، ریسکش
+-- پایین است، ولی صفر نیست — آدرس Vercel را جایی منتشر نکن.
+--
+-- عمداً پالیسیِ DELETE وجود ندارد: خودِ اپ هم هیچ‌وقت حذف نمی‌کند (فقط
+-- archived_at را پر می‌کند)، پس در سطح دیتابیس هم حذف مسدود است — حتی با
+-- کلید anon لو‌رفته، کسی نمی‌تواند رکوردی را کامل پاک کند.
 -- ---------------------------------------------------------------------------
 do $$
 declare t text;
@@ -135,8 +139,15 @@ begin
   loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists anon_all on %I', t);
+    execute format('drop policy if exists anon_read on %I', t);
+    execute format('drop policy if exists anon_insert on %I', t);
+    execute format('drop policy if exists anon_update on %I', t);
     execute format(
-      'create policy anon_all on %I for all to anon, authenticated using (true) with check (true)', t);
+      'create policy anon_read on %I for select to anon, authenticated using (true)', t);
+    execute format(
+      'create policy anon_insert on %I for insert to anon, authenticated with check (true)', t);
+    execute format(
+      'create policy anon_update on %I for update to anon, authenticated using (true) with check (true)', t);
   end loop;
 end $$;
 

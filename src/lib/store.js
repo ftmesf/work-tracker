@@ -229,6 +229,17 @@ export function insert(table, row) {
   return rec
 }
 
+/** مثل insert ولی برای چند ردیف با هم — یک ذخیره‌ی محلی و یک رندر، نه یکی به‌ازای هر ردیف */
+export function insertMany(table, rows) {
+  const recs = rows.map((row) => ({ id: uid(), ...row }))
+  db[table] = [...db[table], ...recs]
+  for (const r of recs) markDirty(table, r.id)
+  saveLocal()
+  emit()
+  scheduleFlush()
+  return recs
+}
+
 export function update(table, id, patch) {
   let updated = null
   db[table] = db[table].map((r) => {
@@ -350,6 +361,27 @@ export function seed() {
 // -------------------------------------------------------------------- شروع
 let started = false
 
+/**
+ * فقط وقتی seed بزن که مطمئن باشیم سرور واقعاً خالی است — نه هر بار که محلی
+ * خالی است. اگر Supabase تنظیم شده ولی pull به‌خاطر قطعی شبکه شکست بخورد،
+ * seed نباید اجرا شود؛ وگرنه دسته‌های تازه با id جدید ساخته و به سرور پوش
+ * می‌شوند و کنار داده‌ی واقعی، رکورد تکراری می‌سازند. در صورت شکست، دوباره
+ * تلاش می‌کنیم تا وقتی یا pull موفق شود یا محلی دیگر خالی نباشد.
+ */
+async function maybeSeedAfterPull() {
+  if (!supabase || !navigator.onLine) return
+  if (!isEmpty()) return
+  const ok = await pull()
+  if (!ok) {
+    setTimeout(maybeSeedAfterPull, 15000)
+    return
+  }
+  if (isEmpty() && db.categories.length === 0) {
+    seed()
+    emit()
+  }
+}
+
 export async function init() {
   if (started) return
   started = true
@@ -362,6 +394,7 @@ export async function init() {
     sync.online = true
     emit()
     scheduleFlush(300)
+    maybeSeedAfterPull()
   })
   window.addEventListener('offline', () => {
     sync.online = false
@@ -376,9 +409,13 @@ export async function init() {
 
   if (supabase && navigator.onLine) {
     await flush()
-    if (isEmpty()) await pull()
   }
 
-  if (db.categories.length === 0) seed()
+  if (!supabase) {
+    if (db.categories.length === 0) seed()
+  } else {
+    await maybeSeedAfterPull()
+  }
+
   emit()
 }
