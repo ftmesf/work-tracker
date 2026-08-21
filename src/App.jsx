@@ -6,6 +6,7 @@ import { Toaster } from './ui.jsx'
 import { useRange, useStore, useToday } from './useStore.js'
 
 import Reminders from './sections/Reminders.jsx'
+import Meetings from './sections/Meetings.jsx'
 import QuickAdd from './sections/QuickAdd.jsx'
 import Attendance from './sections/Attendance.jsx'
 import RangeBar from './sections/RangeBar.jsx'
@@ -14,6 +15,7 @@ import TaskList from './sections/TaskList.jsx'
 import TimeReport from './sections/TimeReport.jsx'
 import ColdCategories from './sections/ColdCategories.jsx'
 import Trend from './sections/Trend.jsx'
+import Heatmap from './sections/Heatmap.jsx'
 import Blockers from './sections/Blockers.jsx'
 import Manage from './sections/Manage.jsx'
 import TextExport from './sections/TextExport.jsx'
@@ -75,6 +77,7 @@ export default function App() {
       </header>
 
       <Reminders db={db} today={today} />
+      <Meetings db={db} today={today} />
       <QuickAdd db={db} today={today} />
       <Attendance db={db} today={today} range={range} />
       <BucketSplit db={db} range={range} />
@@ -83,6 +86,7 @@ export default function App() {
       <TimeReport db={db} range={range} />
       <ColdCategories db={db} range={range} today={today} />
       <Trend db={db} today={today} />
+      <Heatmap db={db} today={today} />
       <Blockers db={db} />
       <Manage db={db} />
       <TextExport db={db} range={range} />

@@ -64,7 +64,7 @@ export default function TimeReport({ db, range }) {
 
   return (
     <Card
-      n={7}
+      n={8}
       title={`زمان — ${rangeLabel(range.from, range.to)}`}
       right={
         <div className="chips">

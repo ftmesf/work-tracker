@@ -49,7 +49,7 @@ export default function Blockers({ db }) {
   )
 
   return (
-    <Fold n={10} id="blockers" title={`موانع${open.length ? ` — ${fa(open.length)} باز` : ''}`}>
+    <Fold n={12} id="blockers" title={`موانع${open.length ? ` — ${fa(open.length)} باز` : ''}`}>
       {open.length === 0 && <div className="empty">مانع بازی نیست.</div>}
       {open.map((b) => <Row key={b.id} b={b} />)}
 

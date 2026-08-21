@@ -474,6 +474,26 @@ label.field > span {
 .trend-row .grow { flex: 1; }
 .trend-row .v { width: 56px; text-align: left; font-variant-numeric: tabular-nums; color: var(--muted); }
 
+/* نقشهٔ فعالیت */
+.hm-wrap { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 2px; }
+.hm-week { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.hm-mlabel { height: 14px; font-size: 10px; color: var(--faint); line-height: 14px; }
+.hm-daylabel {
+  width: 12px; height: 11px; font-size: 9px; line-height: 11px;
+  color: var(--faint); text-align: center;
+}
+.hm-labels { margin-inline-end: 2px; }
+.hm-cell { width: 11px; height: 11px; border-radius: 3px; background: var(--line-soft); }
+.hm-cell.empty { background: transparent; }
+.hm-cell[data-level='1'] { background: #bfdbfe; }
+.hm-cell[data-level='2'] { background: #60a5fa; }
+.hm-cell[data-level='3'] { background: var(--brand); }
+.hm-cell[data-level='4'] { background: #1e3a8a; }
+.hm-legend {
+  display: flex; align-items: center; gap: 4px; margin-top: 10px;
+  font-size: 11px; color: var(--faint);
+}
+
 /* موانع */
 .blocker {
   border: 1px solid var(--line); background: var(--bg); border-radius: var(--radius); padding: 13px 15px; margin-bottom: var(--sp-2);

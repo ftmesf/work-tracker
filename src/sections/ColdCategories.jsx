@@ -8,7 +8,7 @@ export default function ColdCategories({ db, range, today }) {
 
   return (
     <Fold
-      n={8}
+      n={9}
       id="cold"
       title={`دسته‌های سرد${cold.length ? ` — ${fa(cold.length)}` : ''}`}
     >

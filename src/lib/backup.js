@@ -7,6 +7,7 @@ export const TABLES = [
   'attendance',
   'pinned_notes',
   'blockers',
+  'meetings',
 ]
 
 export const TABLE_LABELS = {
@@ -17,6 +18,7 @@ export const TABLE_LABELS = {
   attendance: 'حضور',
   pinned_notes: 'یادداشت‌های پین‌شده',
   blockers: 'موانع',
+  meetings: 'جلسه‌ها',
 }
 
 export function toCSV(rows) {

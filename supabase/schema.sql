@@ -80,10 +80,22 @@ create table if not exists blockers (
   resolved_on date
 );
 
+-- جلسه‌های آینده — رویداد روی یک روز، جدا از task و time_log
+create table if not exists meetings (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  day date not null,
+  time_at time,
+  note text,
+  created_at timestamptz default now(),
+  cancelled_at timestamptz
+);
+
 create index if not exists time_logs_day_idx    on time_logs (occurred_on);
 create index if not exists time_logs_task_idx   on time_logs (task_id);
 create index if not exists tasks_created_idx    on tasks (created_on);
 create index if not exists tasks_status_idx     on tasks (status) where archived_at is null;
+create index if not exists meetings_day_idx     on meetings (day);
 
 -- ---------------------------------------------------------------------------
 -- دسترسی
@@ -96,7 +108,7 @@ create index if not exists tasks_status_idx     on tasks (status) where archived
 do $$
 declare t text;
 begin
-  foreach t in array array['categories','projects','tasks','time_logs','attendance','pinned_notes','blockers']
+  foreach t in array array['categories','projects','tasks','time_logs','attendance','pinned_notes','blockers','meetings']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists anon_all on %I', t);

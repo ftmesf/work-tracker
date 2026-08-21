@@ -58,7 +58,7 @@ export default function TaskList({ db, range, today }) {
   }
 
   return (
-    <Card n={6} title="کارها" right={<span className="small faint">{fa(rows.length)}</span>}>
+    <Card n={7} title="کارها" right={<span className="small faint">{fa(rows.length)}</span>}>
       <div className="chips" style={{ marginBottom: 8 }}>
         <button
           className={'chip' + (!f.bucket ? ' on neutral' : '')}

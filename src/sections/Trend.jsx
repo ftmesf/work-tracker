@@ -20,7 +20,7 @@ export default function Trend({ db, today }) {
 
   return (
     <Fold
-      n={9}
+      n={10}
       id="trend"
       title="روند سه سطل"
       right={

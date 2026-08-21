@@ -30,7 +30,7 @@ export default function RangeBar({ range, setRange }) {
     (range.mode === 'month' && range.from === monthRange(today).from)
 
   return (
-    <Card n={5} title="بازه" id="range">
+    <Card n={6} title="بازه" id="range">
       <div className="chips" style={{ marginBottom: 10 }}>
         <button
           className={'chip' + (range.mode === 'week' ? ' on neutral' : '')}

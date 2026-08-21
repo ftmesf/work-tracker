@@ -19,7 +19,7 @@ export default function Attendance({ db, today, range }) {
   if (!list.includes(today)) list.unshift(today)
 
   return (
-    <Card n={3} title="حضور">
+    <Card n={4} title="حضور">
       <div className="stat-row" style={{ marginBottom: 12 }}>
         <div className="stat">
           <div className="v">{minutesToHM(week.minutes)}</div>

@@ -38,7 +38,7 @@ export default function Manage({ db }) {
   }
 
   return (
-    <Fold n={11} id="manage" title="دسته‌ها و پروژه‌ها">
+    <Fold n={13} id="manage" title="دسته‌ها و پروژه‌ها">
       <div className="chips" style={{ marginBottom: 8 }}>
         <button
           className={'chip' + (tab === 'categories' ? ' on neutral' : '')}

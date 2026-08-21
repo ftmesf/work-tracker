@@ -15,7 +15,7 @@ export default function BucketSplit({ db, range }) {
 
   return (
     <Card
-      n={4}
+      n={5}
       title="تقسیم سه‌تایی"
       right={
         <div className="chips">

@@ -79,7 +79,7 @@ export default function QuickAdd({ db, today }) {
   const canSubmit = title.trim().length > 0 && !!categoryId
 
   return (
-    <Card n={2} title="ثبت سریع">
+    <Card n={3} title="ثبت سریع">
       <div className="chips" style={{ marginBottom: 8 }}>
         {BUCKETS.map((b) => (
           <button
