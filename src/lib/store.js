@@ -160,7 +160,12 @@ export async function flush() {
       const opts = CONFLICT_KEY[table] ? { onConflict: CONFLICT_KEY[table] } : undefined
       const { error } = await supabase.from(table).upsert(rows, opts)
       if (error) throw Object.assign(new Error(error.message), { table })
-      for (const id of ids) dirty[table].delete(id)
+      // فقط idهایی را dirty پاک کن که از زمان snapshot گرفتن دوباره ادیت نشده‌اند —
+      // وگرنه ویرایشی که همزمان با ارسال انجام شده، بی‌صدا گم می‌شود
+      const currentById = new Map(db[table].map((r) => [r.id, r]))
+      for (const id of ids) {
+        if (currentById.get(id) === byId.get(id)) dirty[table].delete(id)
+      }
       saveLocal()
     }
     sync.state = 'idle'

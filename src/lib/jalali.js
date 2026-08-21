@@ -215,7 +215,7 @@ export function jalaliMonthRange(jy, jm) {
 
 export function shiftMonth(jy, jm, delta) {
   let total = jy * 12 + (jm - 1) + delta
-  return { jy: Math.floor(total / 12), jm: (total % 12) + 1 }
+  return { jy: Math.floor(total / 12), jm: (((total % 12) + 12) % 12) + 1 }
 }
 
 export function rangeLabel(from, to) {
